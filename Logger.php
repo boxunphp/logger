@@ -52,6 +52,21 @@ class Logger
      */
     protected static $saveHandler = self::HANDLER_FILE;
 
+    public static function setSavePath($savePath)
+    {
+        self::$savePath = $savePath;
+    }
+
+    public static function setSaveHandler($saveHandler)
+    {
+        self::$saveHandler = $saveHandler;
+    }
+
+    public static function setLevel($level)
+    {
+        self::$level = $level;
+    }
+
     protected function log($level, $data)
     {
         if ($level & self::E_ALL < self::$level) {

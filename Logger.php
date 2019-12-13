@@ -8,6 +8,7 @@
 
 namespace All\Logger;
 
+use Ali\InstanceTrait;
 use All\Request\Request;
 
 /**
@@ -17,6 +18,8 @@ use All\Request\Request;
  */
 class Logger
 {
+    use InstanceTrait;
+
     const E_DEBUG = 1;  // 0000 0001
     const E_INFO = 2;   // 0000 0010
     const E_WARN = 4;   // 0000 0100

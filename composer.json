@@ -1,27 +1,27 @@
 {
-    "name": "boxunphp/php-logger",
-    "description": "PHP日志类",
-    "type": "library",
-    "license": "MIT",
-    "authors": [
-        {
-            "name": "Jordy",
-            "email": "arno.zheng@gmail.com"
-        }
-    ],
-    "minimum-stability": "dev",
-    "require-dev": {
-        "phpunit/phpunit": "7.*"
-    },
-    "require": {
-        "php": "^7.1",
-        "boxunsoft/php-instance": "^v1.1.0",
-        "boxunphp/php-exception": "^v1.0.0",
-        "boxunphp/php-request": "^v1.0.0"
-    },
-    "autoload": {
-        "psr-4": {
-            "All\\Logger\\": ""
-        }
+  "name": "boxunphp/php-logger",
+  "description": "PHP日志类",
+  "type": "library",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Jordy",
+      "email": "arno.zheng@gmail.com"
     }
+  ],
+  "minimum-stability": "dev",
+  "require-dev": {
+    "phpunit/phpunit": "7.*"
+  },
+  "require": {
+    "php": "^7.1",
+    "boxunsoft/php-instance": "v1.*",
+    "boxunphp/php-exception": "v1.*",
+    "boxunphp/php-request": "v1.*"
+  },
+  "autoload": {
+    "psr-4": {
+      "All\\Logger\\": "src/"
+    }
+  }
 }

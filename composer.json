@@ -11,13 +11,13 @@
   ],
   "minimum-stability": "dev",
   "require-dev": {
-    "phpunit/phpunit": "7.*"
+    "phpunit/phpunit": "8.*"
   },
   "require": {
-    "php": "^7.1",
-    "boxunsoft/php-instance": "v1.*",
-    "boxunphp/php-exception": "v1.*",
-    "boxunphp/php-request": "v1.*"
+    "php": "^7.2",
+    "boxunphp/php-instance": "dev-master",
+    "boxunphp/php-exception": "dev-master",
+    "boxunphp/php-request": "dev-master"
   },
   "autoload": {
     "psr-4": {

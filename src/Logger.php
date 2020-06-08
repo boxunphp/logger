@@ -1,44 +1,56 @@
 <?php
-/**
- * Created by PhpStorm.
- * User: Jordy
- * Date: 2019/12/6
- * Time: 11:00 AM
- */
-
 namespace All\Logger;
 
 use All\Instance\InstanceTrait;
 use All\Request\Request;
+use Psr\Log\InvalidArgumentException;
+use Psr\Log\LoggerTrait;
+use Psr\Log\LogLevel;
 
 /**
  * 日志类
  * Class Logger
  * @package All\Logger
+ *
+ * 根据PSR-3: Logger Interface
+ *  https://www.php-fig.org/psr/psr-3/
  */
 class Logger
 {
     use InstanceTrait;
+    use LoggerTrait;
 
-    const E_DEBUG = 1;  // 0000 0001
-    const E_INFO = 2;   // 0000 0010
-    const E_WARN = 4;   // 0000 0100
-    const E_ERROR = 8;  // 0000 1000
-    const E_FATAL = 16; // 0001 0000
+    const DEBUG       = 0x00000001;
+    const INFO        = 0x00000010;
+    const NOTICE      = 0x00000100;
+    const WARNING     = 0x00001000;
+    const ERROR       = 0x00010000;
+    const CRITICAL    = 0x00100000;
+    const ALERT       = 0x01000000;
+    const EMERGENCY   = 0x10000000;
 
-    const E_ALL = self::E_DEBUG | self::E_INFO | self::E_WARN | self::E_ERROR | self::E_FATAL;
+    const E_ALL =   self::DEBUG |
+                    self::INFO |
+                    self::NOTICE |
+                    self::WARNING |
+                    self::ERROR |
+                    self::CRITICAL |
+                    self::ALERT |
+                    self::EMERGENCY;
 
     /**
      * @var int 错误等级
      */
-    protected static $level = self::E_WARN;
-
-    protected static $levelNames = [
-        self::E_DEBUG => 'debug',
-        self::E_INFO => 'info',
-        self::E_WARN => 'warn',
-        self::E_ERROR => 'error',
-        self::E_FATAL => 'fatal',
+    protected static $level = LogLevel::INFO;
+    protected static $levels = [
+        LogLevel::DEBUG => self::DEBUG,
+        LogLevel::INFO => self::INFO,
+        LogLevel::NOTICE => self::NOTICE,
+        LogLevel::WARNING => self::WARNING,
+        LogLevel::ERROR => self::ERROR,
+        LogLevel::CRITICAL => self::CRITICAL,
+        LogLevel::ALERT => self::ALERT,
+        LogLevel::EMERGENCY => self::EMERGENCY,
     ];
 
     const HANDLER_FILE = 'file';
@@ -70,13 +82,15 @@ class Logger
         self::$level = $level;
     }
 
-    protected function log($level, $data)
+    public function log($level, $message, array $context = [])
     {
-        if ($level & self::E_ALL < self::$level) {
-            return true;
+        if (!isset(self::$levels[$level])) {
+            throw new InvalidArgumentException();
         }
 
-        $levelName = self::$levelNames[$level];
+        if (self::$levels[$level] & self::E_ALL < self::$level) {
+            return true;
+        }
 
         $request = Request::getInstance();
         $time = date('c');
@@ -85,11 +99,11 @@ class Logger
         $serverIp = $request->serverIp();
         $clientIp = $request->clientIp();
 
-        if (is_string($data)) {
-            $message = str_replace(["\r", "\n"], ' ', $data);
+        if (is_string($message)) {
+            $message = str_replace(["\r", "\n"], ' ', $message);
         } else {
             $message = json_encode(
-                $data,
+                $message,
                 JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PARTIAL_OUTPUT_ON_ERROR
             );
         }
@@ -98,7 +112,7 @@ class Logger
             case self::HANDLER_STDOUT:
                 $log = [
                     'time' => $time,
-                    'level' => $levelName,
+                    'level' => $level,
                     'host' => $host,
                     'reqid' => $reqId,
                     'server_ip' => $serverIp,
@@ -133,7 +147,7 @@ class Logger
                 if (!is_dir($dir)) {
                     mkdir($dir, 0777, true);
                 }
-                $filename = $dir . '/' . $levelName . '.log';
+                $filename = $dir . '/' . $level . '.log';
                 $isFileExist = is_file($filename);
                 $result = $this->errorLog($content, 3, $filename);
                 if ($result && !$isFileExist) {
@@ -143,31 +157,6 @@ class Logger
         }
 
         return $result;
-    }
-
-    public function debug($data)
-    {
-        return $this->log(self::E_DEBUG, $data);
-    }
-
-    public function info($data)
-    {
-        return $this->log(self::E_INFO, $data);
-    }
-
-    public function warn($data)
-    {
-        return $this->log(self::E_WARN, $data);
-    }
-
-    public function error($data)
-    {
-        return $this->log(self::E_ERROR, $data);
-    }
-
-    public function fatal($data)
-    {
-        return $this->log(self::E_FATAL, $data);
     }
 
     private function errorLog($message, $type, $file)

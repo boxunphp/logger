@@ -1,16 +1,10 @@
 <?php
-/**
- * Created by PhpStorm.
- * User: Jordy
- * Date: 2019/12/6
- * Time: 2:56 PM
- */
-
 namespace Tests\Logger;
 
 use All\Logger\Logger;
 use All\Request\Request;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\LogLevel;
 
 class LoggerTest extends TestCase
 {
@@ -23,7 +17,7 @@ class LoggerTest extends TestCase
     protected function setUp(): void
     {
         Logger::setSavePath('/tmp');
-        Logger::setLevel(Logger::E_DEBUG);
+        Logger::setLevel(LogLevel::DEBUG);
         Logger::setSaveHandler(Logger::HANDLER_FILE);
 
         $request = Request::getInstance();
@@ -52,7 +46,16 @@ class LoggerTest extends TestCase
             ['abc' => 'ABC', 'efg' => 'EFG'],
         ];
 
-        $files = ['debug', 'info', 'warn', 'error', 'fatal'];
+        $files = [
+            LogLevel::DEBUG,
+            LogLevel::INFO,
+            LogLevel::NOTICE,
+            LogLevel::WARNING,
+            LogLevel::ERROR,
+            LogLevel::CRITICAL,
+            LogLevel::ALERT,
+            LogLevel::EMERGENCY,
+        ];
 
         $logger = Logger::getInstance();
 

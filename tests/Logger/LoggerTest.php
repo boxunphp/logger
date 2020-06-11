@@ -18,8 +18,6 @@ class LoggerTest extends TestCase
 
     protected function setUp(): void
     {
-        Logger::setLevel(LogLevel::DEBUG);
-
         $request = Request::getInstance();
         $this->time = date('c');
         $this->host = 'cli';
@@ -33,8 +31,7 @@ class LoggerTest extends TestCase
         $handler = new FileHandler();
         $handler->setSavePath('/tmp');
 
-        $Logger = Logger::getInstance();
-        $Logger->setHandler($handler);
+        $Logger = new Logger(LogLevel::DEBUG, $handler);
 
         $logTmpl = [
             'time' => $this->time,
@@ -82,8 +79,7 @@ class LoggerTest extends TestCase
         $handler = new StdoutHandler();
         $handler->setFilename($filename);
 
-        $Logger = Logger::getInstance();
-        $Logger->setHandler($handler);
+        $Logger = new Logger(LogLevel::DEBUG, $handler);
 
         $logTmpl = [
             'time' => $this->time,
@@ -132,8 +128,7 @@ class LoggerTest extends TestCase
         $handler = new FileHandler();
         $handler->setSavePath('/tmp');
 
-        $Logger = Logger::getInstance();
-        $Logger->setHandler($handler);
+        $Logger = new Logger(LogLevel::DEBUG, $handler);
 
         $logTmpl = [
             'time' => $this->time,
@@ -159,7 +154,7 @@ class LoggerTest extends TestCase
             LogLevel::EMERGENCY,
         ];
 
-        Logger::setLevel(LogLevel::WARNING);
+        $Logger->setLevel(LogLevel::WARNING);
 
         foreach ($files as $file) {
             $filename = '/tmp/' . $file . '.log';

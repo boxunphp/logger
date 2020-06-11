@@ -1,7 +1,6 @@
 <?php
 namespace All\Logger;
 
-use All\Instance\InstanceTrait;
 use All\Request\Request;
 use Psr\Log\InvalidArgumentException;
 use Psr\Log\LoggerInterface;
@@ -18,7 +17,6 @@ use Psr\Log\LogLevel;
  */
 class Logger implements LoggerInterface
 {
-    use InstanceTrait;
     use LoggerTrait;
 
     const DEBUG       = 0x00000001;
@@ -33,8 +31,8 @@ class Logger implements LoggerInterface
     /**
      * @var int 错误等级
      */
-    protected static $level = LogLevel::INFO;
-    protected static $levels = [
+    protected $level = LogLevel::INFO;
+    const LEVEL_MAPPER = [
         LogLevel::DEBUG => self::DEBUG,
         LogLevel::INFO => self::INFO,
         LogLevel::NOTICE => self::NOTICE,
@@ -45,43 +43,57 @@ class Logger implements LoggerInterface
         LogLevel::EMERGENCY => self::EMERGENCY,
     ];
 
-    const HANDLER_FILE = 'file';
-    const HANDLER_STDOUT = 'stdout';
-
     /**
      * @var HandlerInterface
      */
     protected $handler;
 
     /**
+     * @param string|null $level
+     * @param HandlerInterface|null $handler
+     */
+    public function __construct(?string $level, ?HandlerInterface $handler)
+    {
+        if ($level && array_key_exists($level, self::LEVEL_MAPPER)) {
+            $this->level = $level;
+        }
+
+        if ($handler) {
+            $this->handler = $handler;
+        }
+    }
+
+    /**
      * 处理日志内空的句柄
      *
      * @param HandlerInterface $handler
-     * @return void
+     * @return static
      */
     public function setHandler(HandlerInterface $handler)
     {
         $this->handler = $handler;
+        return $this;
     }
 
     /**
      * 设置日志等级
      *
      * @param string $level
-     * @return void
+     * @return static
      */
-    public static function setLevel(string $level)
+    public function setLevel(string $level)
     {
-        self::$level = $level;
+        $this->level = $level;
+        return $this;
     }
 
     public function log($level, $message, array $context = [])
     {
-        if (!isset(self::$levels[$level])) {
+        if (!isset(self::LEVEL_MAPPER[$level])) {
             throw new InvalidArgumentException();
         }
 
-        if (self::$levels[$level] < self::$levels[self::$level]) {
+        if (self::LEVEL_MAPPER[$level] < self::LEVEL_MAPPER[$this->level]) {
             return;
         }
 

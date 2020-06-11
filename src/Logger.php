@@ -4,6 +4,7 @@ namespace All\Logger;
 use All\Instance\InstanceTrait;
 use All\Request\Request;
 use Psr\Log\InvalidArgumentException;
+use Psr\Log\LoggerInterface;
 use Psr\Log\LoggerTrait;
 use Psr\Log\LogLevel;
 
@@ -15,7 +16,7 @@ use Psr\Log\LogLevel;
  * 根据PSR-3: Logger Interface
  *  https://www.php-fig.org/psr/psr-3/
  */
-class Logger
+class Logger implements LoggerInterface
 {
     use InstanceTrait;
     use LoggerTrait;
@@ -28,15 +29,6 @@ class Logger
     const CRITICAL    = 0x00100000;
     const ALERT       = 0x01000000;
     const EMERGENCY   = 0x10000000;
-
-    const E_ALL =   self::DEBUG |
-                    self::INFO |
-                    self::NOTICE |
-                    self::WARNING |
-                    self::ERROR |
-                    self::CRITICAL |
-                    self::ALERT |
-                    self::EMERGENCY;
 
     /**
      * @var int 错误等级
@@ -57,27 +49,28 @@ class Logger
     const HANDLER_STDOUT = 'stdout';
 
     /**
-     * 日志保存目录
-     * @var string
+     * @var HandlerInterface
      */
-    protected static $savePath = '';
+    protected $handler;
+
     /**
-     * 日志保存类型
-     * @var string
+     * 处理日志内空的句柄
+     *
+     * @param HandlerInterface $handler
+     * @return void
      */
-    protected static $saveHandler = self::HANDLER_FILE;
-
-    public static function setSavePath($savePath)
+    public function setHandler(HandlerInterface $handler)
     {
-        self::$savePath = $savePath;
+        $this->handler = $handler;
     }
 
-    public static function setSaveHandler($saveHandler)
-    {
-        self::$saveHandler = $saveHandler;
-    }
-
-    public static function setLevel($level)
+    /**
+     * 设置日志等级
+     *
+     * @param string $level
+     * @return void
+     */
+    public static function setLevel(string $level)
     {
         self::$level = $level;
     }
@@ -88,8 +81,8 @@ class Logger
             throw new InvalidArgumentException();
         }
 
-        if (self::$levels[$level] & self::E_ALL < self::$level) {
-            return true;
+        if (self::$levels[$level] < self::$levels[self::$level]) {
+            return;
         }
 
         $request = Request::getInstance();
@@ -108,101 +101,16 @@ class Logger
             );
         }
 
-        switch (self::$saveHandler) {
-            case self::HANDLER_STDOUT:
-                $log = [
-                    'time' => $time,
-                    'level' => $level,
-                    'host' => $host,
-                    'reqid' => $reqId,
-                    'server_ip' => $serverIp,
-                    'client_ip' => $clientIp,
-                    'message' => $message
-                ];
+        $log = [
+            'time' => $time,
+            'level' => $level,
+            'host' => $host,
+            'reqid' => $reqId,
+            'server_ip' => $serverIp,
+            'client_ip' => $clientIp,
+            'message' => $message
+        ];
 
-                $content = json_encode(
-                    $log,
-                    JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PARTIAL_OUTPUT_ON_ERROR
-                ) . "\n";
-                if ('php://stdout' == self::$savePath) {
-                    $fp = defined('STDOUT') ? STDOUT : fopen('php://stdout', 'wb');
-                    $result = $this->fwrite($fp, $content) !== false;
-                } else {
-                    $fp = fopen(self::$savePath, 'wb');
-                    $result = $this->fwrite($fp, $content) !== false;
-                    fclose($fp);
-                }
-                break;
-            default:
-                $log = [
-                    $time,
-                    $host,
-                    $reqId,
-                    $serverIp,
-                    $clientIp,
-                    $message
-                ];
-                $content = implode(' ', $log) . "\n";
-                $dir = self::$savePath;
-                if (!is_dir($dir)) {
-                    mkdir($dir, 0777, true);
-                }
-                $filename = $dir . '/' . $level . '.log';
-                $isFileExist = is_file($filename);
-                $result = $this->errorLog($content, 3, $filename);
-                if ($result && !$isFileExist) {
-                    chmod($filename, 0777);
-                }
-                break;
-        }
-
-        return $result;
-    }
-
-    private function errorLog($message, $type, $file)
-    {
-        $arr = [];
-        if (strlen($message) > 1024) {
-            $arr = str_split($message, 1024);
-        } else {
-            $arr[] = $message;
-        }
-        foreach ($arr as $item) {
-            if (!error_log($item, $type, $file)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private function fwrite($fp, $message)
-    {
-        $arr = [];
-        $needLock = false;
-        if (strlen($message) > 1024) {
-            $needLock = true;
-            $arr = str_split($message, 1024);
-        } else {
-            $arr[] = $message;
-        }
-        $bytes = 0;
-        if ($needLock) {
-            flock($fp, LOCK_EX);
-        }
-        foreach ($arr as $item) {
-            $result = fwrite($fp, $item);
-            if ($result === false) {
-                if ($needLock) {
-                    flock($fp, LOCK_UN);
-                }
-                return false;
-            } else {
-                $bytes += $result;
-            }
-        }
-        if ($needLock) {
-            flock($fp, LOCK_UN);
-        }
-        return $bytes;
+        $this->handler->write($log);
     }
 }

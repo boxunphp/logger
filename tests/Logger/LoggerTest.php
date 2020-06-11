@@ -1,6 +1,8 @@
 <?php
 namespace Tests\Logger;
 
+use All\Logger\Handler\FileHandler;
+use All\Logger\Handler\StdoutHandler;
 use All\Logger\Logger;
 use All\Request\Request;
 use PHPUnit\Framework\TestCase;
@@ -16,9 +18,7 @@ class LoggerTest extends TestCase
 
     protected function setUp(): void
     {
-        Logger::setSavePath('/tmp');
         Logger::setLevel(LogLevel::DEBUG);
-        Logger::setSaveHandler(Logger::HANDLER_FILE);
 
         $request = Request::getInstance();
         $this->time = date('c');
@@ -28,18 +28,23 @@ class LoggerTest extends TestCase
         $this->clientIp = $request->clientIp();
     }
 
-    public function testFile()
+    public function testFileHandler()
     {
-        $this->time = date('c');
+        $handler = new FileHandler();
+        $handler->setSavePath('/tmp');
+
+        $Logger = Logger::getInstance();
+        $Logger->setHandler($handler);
+
         $logTmpl = [
-            $this->time,
-            $this->host,
-            $this->reqId,
-            $this->serverIp,
-            $this->clientIp,
-            ''
+            'time' => $this->time,
+            'level' => LogLevel::DEBUG,
+            'host' => $this->host,
+            'reqid' => $this->reqId,
+            'server_ip' => $this->serverIp,
+            'client_ip' => $this->clientIp,
+            'message' => '',
         ];
-        $index = 5;
 
         $list = [
             'abc',
@@ -57,16 +62,118 @@ class LoggerTest extends TestCase
             LogLevel::EMERGENCY,
         ];
 
-        $logger = Logger::getInstance();
-
         foreach ($files as $file) {
             foreach ($list as $message) {
                 $filename = '/tmp/' . $file . '.log';
                 @unlink($filename);
-                $logger->{$file}($message);
+                $Logger->{$file}($message);
                 $log = $logTmpl;
-                $log[$index] = $this->getMessage($message);
-                $content = implode(' ', $log) . "\n";
+                $log['level'] = $file;
+                $log['message'] = $this->getMessage($message);
+                $content = implode(' ', array_values($log)) . "\n";
+                $this->assertEquals($content, file_get_contents($filename));
+            }
+        }
+    }
+
+    public function testStdoutHandler()
+    {
+        $filename = '/tmp/logger.log';
+        $handler = new StdoutHandler();
+        $handler->setFilename($filename);
+
+        $Logger = Logger::getInstance();
+        $Logger->setHandler($handler);
+
+        $logTmpl = [
+            'time' => $this->time,
+            'level' => LogLevel::DEBUG,
+            'host' => $this->host,
+            'reqid' => $this->reqId,
+            'server_ip' => $this->serverIp,
+            'client_ip' => $this->clientIp,
+            'message' => '',
+        ];
+
+        $list = [
+            'abc',
+            ['abc' => 'ABC', 'efg' => 'EFG'],
+        ];
+
+        $files = [
+            LogLevel::DEBUG,
+            LogLevel::INFO,
+            LogLevel::NOTICE,
+            LogLevel::WARNING,
+            LogLevel::ERROR,
+            LogLevel::CRITICAL,
+            LogLevel::ALERT,
+            LogLevel::EMERGENCY,
+        ];
+
+        @unlink($filename);
+        foreach ($files as $file) {
+            foreach ($list as $message) {
+                $Logger->{$file}($message);
+                $log = $logTmpl;
+                $log['level'] = $file;
+                $log['message'] = $this->getMessage($message);
+                $content = json_encode(
+                    $log,
+                    JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PARTIAL_OUTPUT_ON_ERROR
+                ) . "\n";
+                $this->assertEquals($content, file_get_contents($filename));
+            }
+        }
+    }
+
+    public function testLogLevel()
+    {
+        $handler = new FileHandler();
+        $handler->setSavePath('/tmp');
+
+        $Logger = Logger::getInstance();
+        $Logger->setHandler($handler);
+
+        $logTmpl = [
+            'time' => $this->time,
+            'level' => LogLevel::DEBUG,
+            'host' => $this->host,
+            'reqid' => $this->reqId,
+            'server_ip' => $this->serverIp,
+            'client_ip' => $this->clientIp,
+            'message' => '',
+        ];
+
+        $message = 'abc';
+        $logTmpl['message'] = $this->getMessage($message);
+
+        $files = [
+            LogLevel::DEBUG,
+            LogLevel::INFO,
+            LogLevel::NOTICE,
+            LogLevel::WARNING,
+            LogLevel::ERROR,
+            LogLevel::CRITICAL,
+            LogLevel::ALERT,
+            LogLevel::EMERGENCY,
+        ];
+
+        Logger::setLevel(LogLevel::WARNING);
+
+        foreach ($files as $file) {
+            $filename = '/tmp/' . $file . '.log';
+            @unlink($filename);
+
+            $Logger->{$file}($message);
+
+            if (in_array($file, [LogLevel::DEBUG, LogLevel::INFO, LogLevel::NOTICE])) {
+                $this->assertFalse(file_exists($filename));
+            } else {
+                $this->assertTrue(file_exists($filename));
+                $log = $logTmpl;
+                $log['level'] = $file;
+                $content = implode(' ', array_values($log)) . "\n";
                 $this->assertEquals($content, file_get_contents($filename));
             }
         }

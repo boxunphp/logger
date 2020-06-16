@@ -6,7 +6,7 @@ use All\Logger\HandlerInterface;
 /**
  * 输出标准输出
  */
-class StdoutHandler implements HandlerInterface
+class StreamHandler implements HandlerInterface
 {
     /**
      * 日志保存的文件

@@ -3,6 +3,7 @@ namespace Tests\Logger;
 
 use All\Logger\Handler\FileHandler;
 use All\Logger\Handler\StdoutHandler;
+use All\Logger\Handler\StreamHandler;
 use All\Logger\Logger;
 use All\Request\Request;
 use PHPUnit\Framework\TestCase;
@@ -76,7 +77,7 @@ class LoggerTest extends TestCase
     public function testStdoutHandler()
     {
         $filename = '/tmp/logger.log';
-        $handler = new StdoutHandler();
+        $handler = new StreamHandler();
         $handler->setFilename($filename);
 
         $Logger = new Logger(LogLevel::DEBUG, $handler);

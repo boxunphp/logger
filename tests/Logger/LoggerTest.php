@@ -22,9 +22,9 @@ class LoggerTest extends TestCase
         $request = Request::getInstance();
         $this->time = date('c');
         $this->host = 'cli';
-        $this->reqId = $request->requestId();
-        $this->serverIp = $request->serverIp();
-        $this->clientIp = $request->clientIp();
+        $this->reqId = $request->getRequestId();
+        $this->serverIp = $request->getServerIp();
+        $this->clientIp = $request->getClientIp();
     }
 
     public function testFileHandler()

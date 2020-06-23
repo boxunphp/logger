@@ -99,10 +99,10 @@ class Logger implements LoggerInterface
 
         $request = Request::getInstance();
         $time = date('c');
-        $reqId = $request->requestId();
-        $host = $request->isCli() ? 'cli' : $request->serverHost();
-        $serverIp = $request->serverIp();
-        $clientIp = $request->clientIp();
+        $reqId = $request->getRequestId();
+        $host = 'cli' === PHP_SAPI ? 'cli' : $request->getServerHost();
+        $serverIp = $request->getServerIp();
+        $clientIp = $request->getClientIp();
 
         if (is_string($message)) {
             $message = str_replace(["\r", "\n"], ' ', $message);

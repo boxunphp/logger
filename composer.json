@@ -1,5 +1,5 @@
 {
-  "name": "boxunphp/php-logger",
+  "name": "boxunphp/logger",
   "description": "PHP日志类",
   "type": "library",
   "license": "MIT",

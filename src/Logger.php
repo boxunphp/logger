@@ -43,6 +43,9 @@ class Logger implements LoggerInterface
         LogLevel::EMERGENCY => self::EMERGENCY,
     ];
 
+    const HANDLER_FILE = 'file';
+    const HANDLER_STDOUT = 'stdout';
+
     /**
      * @var HandlerInterface
      */

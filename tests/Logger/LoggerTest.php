@@ -2,10 +2,7 @@
 namespace Tests\Logger;
 
 use All\Logger\Handler\FileHandler;
-use All\Logger\Handler\StdoutHandler;
-use All\Logger\Handler\StreamHandler;
 use All\Logger\Logger;
-use All\Request\Request;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LogLevel;
 
@@ -13,18 +10,15 @@ class LoggerTest extends TestCase
 {
     protected $time;
     protected $host;
-    protected $reqId;
     protected $serverIp;
     protected $clientIp;
 
     protected function setUp(): void
     {
-        $request = Request::getInstance();
         $this->time = date('c');
         $this->host = 'cli';
-        $this->reqId = $request->getRequestId();
-        $this->serverIp = $request->getServerIp();
-        $this->clientIp = $request->getClientIp();
+        $this->serverIp = gethostbyname(gethostname());
+        $this->clientIp = '';
     }
 
     public function testFileHandler()
@@ -38,7 +32,6 @@ class LoggerTest extends TestCase
             'time' => $this->time,
             'level' => LogLevel::DEBUG,
             'host' => $this->host,
-            'reqid' => $this->reqId,
             'server_ip' => $this->serverIp,
             'client_ip' => $this->clientIp,
             'message' => '',
@@ -74,19 +67,14 @@ class LoggerTest extends TestCase
         }
     }
 
-    public function testStdoutHandler()
+    public function testDefaultHandler()
     {
-        $filename = '/tmp/logger.log';
-        $handler = new StreamHandler();
-        $handler->setFilename($filename);
-
-        $Logger = new Logger(LogLevel::DEBUG, $handler);
+        $Logger = new Logger();
 
         $logTmpl = [
             'time' => $this->time,
             'level' => LogLevel::DEBUG,
             'host' => $this->host,
-            'reqid' => $this->reqId,
             'server_ip' => $this->serverIp,
             'client_ip' => $this->clientIp,
             'message' => '',
@@ -108,17 +96,15 @@ class LoggerTest extends TestCase
             LogLevel::EMERGENCY,
         ];
 
-        @unlink($filename);
         foreach ($files as $file) {
             foreach ($list as $message) {
+                $filename = '/var/log/' . $file . '.log';
+                @unlink($filename);
                 $Logger->{$file}($message);
                 $log = $logTmpl;
                 $log['level'] = $file;
                 $log['message'] = $this->getMessage($message);
-                $content = json_encode(
-                    $log,
-                    JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PARTIAL_OUTPUT_ON_ERROR
-                ) . "\n";
+                $content = implode(' ', array_values($log)) . "\n";
                 $this->assertEquals($content, file_get_contents($filename));
             }
         }
@@ -135,7 +121,6 @@ class LoggerTest extends TestCase
             'time' => $this->time,
             'level' => LogLevel::DEBUG,
             'host' => $this->host,
-            'reqid' => $this->reqId,
             'server_ip' => $this->serverIp,
             'client_ip' => $this->clientIp,
             'message' => '',
@@ -173,6 +158,33 @@ class LoggerTest extends TestCase
                 $this->assertEquals($content, file_get_contents($filename));
             }
         }
+    }
+
+    public function testContext()
+    {
+        $handler = new FileHandler();
+        $handler->setSavePath('/tmp');
+
+        $Logger = new Logger(LogLevel::DEBUG, $handler);
+
+        $log = [
+            'time' => $this->time,
+            'level' => LogLevel::WARNING,
+            'host' => $this->host,
+            'server_ip' => $this->serverIp,
+            'client_ip' => $this->clientIp,
+            'message' => '',
+        ];
+
+        $message = 'abc';
+        $log['message'] = $this->getMessage($message);
+        $type = 'curl';
+        $filename = '/tmp/' . LogLevel::WARNING . '.log';
+        @unlink($filename);
+        $Logger->warning($message, ['type' => $type]);
+        $log['type'] = $type;
+        $content = implode(' ', array_values($log)) . "\n";
+        $this->assertEquals($content, file_get_contents($filename));
     }
 
     protected function getMessage($data)

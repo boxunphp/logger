@@ -1,8 +1,7 @@
 <?php
 namespace All\Logger;
 
-use All\Request\Request;
-use Psr\Log\InvalidArgumentException;
+use All\Logger\Handler\FileHandler;
 use Psr\Log\LoggerInterface;
 use Psr\Log\LoggerTrait;
 use Psr\Log\LogLevel;
@@ -43,9 +42,6 @@ class Logger implements LoggerInterface
         LogLevel::EMERGENCY => self::EMERGENCY,
     ];
 
-    const HANDLER_FILE = 'file';
-    const HANDLER_STDOUT = 'stdout';
-
     /**
      * @var HandlerInterface
      */
@@ -55,7 +51,7 @@ class Logger implements LoggerInterface
      * @param string|null $level
      * @param HandlerInterface|null $handler
      */
-    public function __construct(?string $level, ?HandlerInterface $handler)
+    public function __construct(?string $level = LogLevel::DEBUG, ?HandlerInterface $handler = null)
     {
         if ($level && array_key_exists($level, self::LEVEL_MAPPER)) {
             $this->level = $level;
@@ -93,19 +89,17 @@ class Logger implements LoggerInterface
     public function log($level, $message, array $context = [])
     {
         if (!isset(self::LEVEL_MAPPER[$level])) {
-            throw new InvalidArgumentException();
+            throw new \InvalidArgumentException(sprintf('Invalid parameter level, the values must be one of (%s)', implode(', ', array_values(self::LEVEL_MAPPER))));
         }
 
         if (self::LEVEL_MAPPER[$level] < self::LEVEL_MAPPER[$this->level]) {
             return;
         }
 
-        $request = Request::getInstance();
         $time = date('c');
-        $reqId = $request->getRequestId();
-        $host = 'cli' === PHP_SAPI ? 'cli' : $request->getServerHost();
-        $serverIp = $request->getServerIp();
-        $clientIp = $request->getClientIp();
+        $host = 'cli' === PHP_SAPI ? 'cli' : $this->getServerHost();
+        $serverIp = $this->getServerIp();
+        $clientIp = $this->getClientIp();
 
         if (is_string($message)) {
             $message = str_replace(["\r", "\n"], ' ', $message);
@@ -120,12 +114,106 @@ class Logger implements LoggerInterface
             'time' => $time,
             'level' => $level,
             'host' => $host,
-            'reqid' => $reqId,
             'server_ip' => $serverIp,
             'client_ip' => $clientIp,
             'message' => $message
-        ];
+        ] + $context;
 
-        $this->handler->write($log);
+        $this->getHandler()->write($log);
     }
+
+    /**
+     * 如果没配置handler,默认使用FileHandler,输出到/var/log
+     *
+     * @return HandlerInterface
+     */
+    private function getHandler()
+    {
+        if ($this->handler) {
+            return $this->handler;
+        }
+
+        $this->handler = new FileHandler();
+        $this->handler->setSavePath('/var/log');
+
+        return $this->handler;
+    }
+
+    /**
+     * 服务器名
+     *
+     * @return string
+     */
+    private function getServerHost()
+    {
+        static $serverHost;
+
+        if (null !== $serverHost) {
+            return $serverHost;
+        }
+
+        if (isset($_SERVER['HTTP_HOST'])) {
+            $serverHost = $_SERVER['HTTP_HOST'];
+        } elseif (isset($_SERVER['SERVER_NAME'])) {
+            $serverHost = $_SERVER['SERVER_NAME'];
+        } elseif (isset($_SERVER['SERVER_ADDR'])) {
+            $serverHost = $_SERVER['SERVER_ADDR'];
+        } else {
+            $serverHost = '';
+        }
+
+        return $serverHost;
+    }
+
+    /**
+     * 服务器IP
+     *
+     * @return string
+     */
+    private function getServerIp()
+    {
+        static $serverIp;
+
+        if (null !== $serverIp) {
+            return $serverIp;
+        }
+
+        $serverIp = $_SERVER['SERVER_ADDR'] ?? '';
+        if (!$serverIp) {
+            $serverIp = gethostbyname(gethostname());
+        }
+
+        return $serverIp;
+    }
+
+    /**
+     * 客户端IP
+     *
+     * @return string
+     */
+    private function getClientIp()
+    {
+        static $clientIp;
+
+        if (null !== $clientIp) {
+            return $clientIp;
+        }
+
+        //IP V4
+        $ip = '';
+        $unknown = 'unknown';
+        if (!$ip && !empty($_SERVER['HTTP_X_FORWARDED_FOR']) && strcasecmp($_SERVER['HTTP_X_FORWARDED_FOR'], $unknown)) {
+            $ipList = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
+            $clientIp = trim(current($ipList));
+            if (ip2long($clientIp) !== false) {
+                $ip = $clientIp;
+            }
+        }
+        if (!$ip && !empty($_SERVER['REMOTE_ADDR']) && strcasecmp($_SERVER['REMOTE_ADDR'], $unknown)) {
+            $ip = trim($_SERVER['REMOTE_ADDR']);
+        }
+
+        return $clientIp = $ip;
+    }
+
 }

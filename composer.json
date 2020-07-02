@@ -15,8 +15,7 @@
   },
   "require": {
     "php": "^7.2",
-    "psr/log": "^1.1",
-    "boxunphp/request": "^2.0"
+    "psr/log": "^1.1"
   },
   "autoload": {
     "psr-4": {
